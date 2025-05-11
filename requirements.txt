@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+gunicorn
 requests
 python-dotenv
 numpy
@@ -9,3 +10,4 @@ python-multipart
 opencv-python
 langchain-groq
 langchain
+pytz

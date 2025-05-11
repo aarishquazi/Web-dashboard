@@ -9,6 +9,7 @@ import numpy as np
 import tensorflow as tf
 import os
 from datetime import datetime
+import pytz
 from dotenv import load_dotenv
 import cv2
 import numpy as np
@@ -60,6 +61,9 @@ HEALTH_ANALYSIS_TEMPLATE = (
     "- Body Temperature: {temperature}°C\n"
     "- Pulse Rate: {pulse_rate} BPM\n"
     "- ECG Analysis: {ecg_result} (Confidence: {ecg_confidence:.2f})\n\n"
+    "Patient Information: \n"
+    "- Patient Name: {name}\n"
+    "- Date of Report: {date}°C\n"
     "Please provide a detailed analysis including:\n"
     "1. Overall health assessment\n"
     "2. Analysis of each vital sign\n"
@@ -168,12 +172,13 @@ async def upload_snapshot(file: UploadFile = File(...), label: str = Form(...)):
 
 @app.post("/generate-report")
 async def generate_report(
+    name: str = Form(...),
     temperature: float = Form(...),
     pulseRate: int = Form(...),
     ecgImage: UploadFile = File(...)
 ):
     try:
-        # Process ECG image
+        # Read and preprocess ECG image
         contents = await ecgImage.read()
         npimg = np.frombuffer(contents, np.uint8)
         img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
@@ -181,24 +186,28 @@ async def generate_report(
         img = img.astype("float32") / 255.0
         img = np.expand_dims(img, axis=0)
 
-        # Get ECG prediction
+        # Predict using model
         prediction = model.predict(img)
         ecg_result = "Abnormal" if prediction[0][0] < 0.5 else "Normal"
         ecg_confidence = float(prediction[0][0])
-
-        # Generate report using LangChain
+        ist = pytz.timezone("Asia/Kolkata")
+        now_ist = datetime.now(ist)
+        # Generate report with LLM (LangChain or similar)
         messages = health_prompt.format_messages(
             temperature=temperature,
             pulse_rate=pulseRate,
             ecg_result=ecg_result,
-            ecg_confidence=ecg_confidence
+            ecg_confidence=ecg_confidence,
+            name=name,
+            date=now_ist.strftime("%d-%m-%Y %I:%M:%S %p")
         )
-        
         response = llm.invoke(messages)
         report = response.content
 
         return {
             "report": report,
+            "name": name,
+            "timestamp": now_ist.strftime("%d-%m-%Y %I:%M:%S %p"),
             "vitals": {
                 "temperature": temperature,
                 "pulse_rate": pulseRate,
