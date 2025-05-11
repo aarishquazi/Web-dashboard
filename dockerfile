@@ -1,19 +1,19 @@
 FROM python:3.12-slim
 
-# Install system dependencies needed for OpenCV
+# Install system packages needed for OpenCV (cv2)
 RUN apt-get update && apt-get install -y \
-    libgl1 \
+    libgl1-mesa-glx \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
-# Copy all files into the container
+# Copy your code to the container
 COPY . .
 
 # Install Python dependencies
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Run the application
+# Run your app
 CMD ["python", "main.py"]
